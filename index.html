@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoSched — Energy Efficient CPU Scheduling Simulator</title>
+  <meta name="description" content="Interactive simulation of an energy-efficient CPU scheduling algorithm integrating DVFS, thermal-aware scheduling, and workload prediction." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Animated Background -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow glow-1"></div>
+  <div class="bg-glow glow-2"></div>
+  <div class="bg-glow glow-3"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="url(#grad1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="url(#grad2)" fill-opacity="0.3"/>
+            <defs>
+              <linearGradient id="grad1" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00f5c4"/>
+                <stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient>
+              <linearGradient id="grad2" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00f5c4"/>
+                <stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-name">EcoSched</div>
+          <div class="logo-sub">Energy Efficient CPU Scheduler</div>
+        </div>
+      </div>
+      <div class="header-badges">
+        <select class="setting-select" id="themeSelect" style="width: auto; height: 26px; padding: 2px 8px; font-size: 0.7rem; border-radius: 12px; margin-right: 8px;">
+          <option value="dark">Space Dark</option>
+          <option value="light">Clean Light</option>
+          <option value="cyberpunk">Cyberpunk</option>
+        </select>
+        <span class="badge badge-dvfs">DVFS</span>
+        <span class="badge badge-thermal">Thermal-Aware</span>
+        <span class="badge badge-predict">ML Prediction</span>
+        <div class="sim-status" id="simStatus">
+          <span class="status-dot idle"></span>
+          <span id="simStatusText">Idle</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- Control Panel -->
+    <section class="control-panel glass-card">
+      <div class="panel-header">
+        <h2 class="panel-title"><span class="icon">⚙️</span> Simulation Control</h2>
+        <div class="control-actions">
+          <button class="btn btn-primary" id="btnAddTask">+ Add Task</button>
+          <button class="btn btn-success" id="btnStart">▶ Run</button>
+          <button class="btn btn-secondary" id="btnStep" disabled>⏭ Step (1 Tick)</button>
+          <button class="btn btn-warning" id="btnPause" disabled>⏸ Pause</button>
+          <button class="btn btn-danger" id="btnReset">↺ Reset</button>
+          <button class="btn btn-secondary" id="btnExport" disabled>📥 Export CSV</button>
+        </div>
+      </div>
+
+      <!-- Algorithm Settings -->
+      <div class="settings-grid">
+        <div class="setting-item">
+          <label class="setting-label">Algorithm</label>
+          <select class="setting-select" id="algorithmSelect">
+            <option value="ecosched">EcoSched (DVFS + Thermal + Prediction)</option>
+            <option value="rr">Round Robin (Baseline)</option>
+            <option value="edf">Earliest Deadline First</option>
+            <option value="sjf">Shortest Job First</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <label class="setting-label">Time Quantum (ms)</label>
+          <input type="range" class="setting-range" id="quantumRange" min="1" max="20" value="4" />
+          <span class="range-val" id="quantumVal">4ms</span>
+        </div>
+        <div class="setting-item">
+          <label class="setting-label">Max Temp (°C)</label>
+          <input type="range" class="setting-range" id="tempRange" min="60" max="100" value="80" />
+          <span class="range-val" id="tempVal">80°C</span>
+        </div>
+        <div class="setting-item">
+          <label class="setting-label">Sim Speed</label>
+          <input type="range" class="setting-range" id="speedRange" min="1" max="5" value="2" />
+          <span class="range-val" id="speedVal">2×</span>
+        </div>
+      </div>
+
+      <!-- Task Table -->
+      <div class="task-table-wrap">
+        <table class="task-table" id="taskTable">
+          <thead>
+            <tr>
+              <th>PID</th>
+              <th>Name</th>
+              <th>Arrival (ms)</th>
+              <th>Burst (ms)</th>
+              <th>Priority</th>
+              <th>Deadline (ms)</th>
+              <th>Type</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="taskTableBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Dashboard Row 1: KPI Cards -->
+    <div class="kpi-row">
+      <div class="kpi-card glass-card">
+        <div class="kpi-icon kpi-energy">⚡</div>
+        <div class="kpi-content">
+          <div class="kpi-val" id="kpiEnergy">0.00</div>
+          <div class="kpi-label">Energy (J)</div>
+          <div class="kpi-delta" id="kpiEnergySave">—</div>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 80 30"><polyline id="sparkEnergy" points="0,25 10,20 20,22 30,15 40,18 50,10 60,13 70,8 80,5" fill="none" stroke="#00f5c4" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi-card glass-card">
+        <div class="kpi-icon kpi-freq">🔁</div>
+        <div class="kpi-content">
+          <div class="kpi-val" id="kpiFreq">0.00</div>
+          <div class="kpi-label">CPU Freq (GHz)</div>
+          <div class="kpi-delta" id="kpiFreqState">Idle</div>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 80 30"><polyline id="sparkFreq" points="0,25 0,25" fill="none" stroke="#7c3aed" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi-card glass-card">
+        <div class="kpi-icon kpi-temp">🌡️</div>
+        <div class="kpi-content">
+          <div class="kpi-val" id="kpiTemp">30.0</div>
+          <div class="kpi-label">Temperature (°C)</div>
+          <div class="kpi-delta" id="kpiTempState">Normal</div>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 80 30"><polyline id="sparkTemp" points="0,20 0,20" fill="none" stroke="#f59e0b" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi-card glass-card">
+        <div class="kpi-icon kpi-util">📊</div>
+        <div class="kpi-content">
+          <div class="kpi-val" id="kpiUtil">0</div>
+          <div class="kpi-label">CPU Utilization (%)</div>
+          <div class="kpi-delta" id="kpiUtilState">Idle</div>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 80 30"><polyline id="sparkUtil" points="0,25 0,25" fill="none" stroke="#3b82f6" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi-card glass-card">
+        <div class="kpi-icon kpi-tasks">✅</div>
+        <div class="kpi-content">
+          <div class="kpi-val" id="kpiCompleted">0/0</div>
+          <div class="kpi-label">Tasks Completed</div>
+          <div class="kpi-delta" id="kpiAvgWait">Avg Wait: —</div>
+        </div>
+        <svg class="kpi-spark" viewBox="0 0 80 30"><polyline id="sparkTasks" points="0,25 0,25" fill="none" stroke="#10b981" stroke-width="2"/></svg>
+      </div>
+    </div>
+
+    <!-- Dashboard Row 2: Gantt + CPU State -->
+    <div class="row-2">
+      <!-- Gantt Chart -->
+      <div class="gantt-wrap glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">📅</span> Gantt Chart — Task Scheduling Timeline</h2>
+          <div style="display:flex; gap:10px; align-items:center;">
+             <div class="debug-reason" id="debugReason">Scheduler Idle</div>
+             <div class="sim-time">T = <span id="simTime">0</span> ms</div>
+          </div>
+        </div>
+        <div class="gantt-outer" id="ganttOuter">
+          <canvas id="ganttCanvas"></canvas>
+        </div>
+        <div class="gantt-legend" id="ganttLegend"></div>
+      </div>
+
+      <!-- CPU State Visualization -->
+      <div class="cpu-state glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">🖥️</span> CPU State</h2>
+        </div>
+        <div class="cpu-visual">
+          <div class="cpu-die">
+            <div class="cpu-core" id="core0">
+              <div class="core-label">Core 0</div>
+              <div class="core-task" id="core0Task">IDLE</div>
+              <div class="core-freq" id="core0Freq">—</div>
+            </div>
+            <div class="cpu-core" id="core1">
+              <div class="core-label">Core 1</div>
+              <div class="core-task" id="core1Task">IDLE</div>
+              <div class="core-freq" id="core1Freq">—</div>
+            </div>
+            <div class="cpu-core" id="core2">
+              <div class="core-label">Core 2</div>
+              <div class="core-task" id="core2Task">IDLE</div>
+              <div class="core-freq" id="core2Freq">—</div>
+            </div>
+            <div class="cpu-core" id="core3">
+              <div class="core-label">Core 3</div>
+              <div class="core-task" id="core3Task">IDLE</div>
+              <div class="core-freq" id="core3Freq">—</div>
+            </div>
+            <div class="cpu-center">
+              <div class="cpu-logo">CPU</div>
+              <div class="cpu-temp-ring" id="cpuTempRing">
+                <svg viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#1e293b" stroke-width="8"/>
+                  <circle id="tempArc" cx="40" cy="40" r="32" fill="none" stroke="#00f5c4" stroke-width="8" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round" transform="rotate(-90 40 40)"/>
+                </svg>
+                <div class="temp-center-val" id="tempCenterVal">30°C</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dvfs-panel">
+            <div class="dvfs-title">DVFS State</div>
+            <div class="dvfs-levels">
+              <div class="dvfs-level active" id="dvfsL1" data-freq="0.8">0.8 GHz</div>
+              <div class="dvfs-level" id="dvfsL2" data-freq="1.2">1.2 GHz</div>
+              <div class="dvfs-level" id="dvfsL3" data-freq="1.8">1.8 GHz</div>
+              <div class="dvfs-level" id="dvfsL4" data-freq="2.4">2.4 GHz</div>
+              <div class="dvfs-level" id="dvfsL5" data-freq="3.2">3.2 GHz</div>
+            </div>
+            <div class="voltage-bar-wrap">
+              <div class="voltage-label">Voltage</div>
+              <div class="voltage-bar-bg"><div class="voltage-bar-fill" id="voltageBar" style="width:25%"></div></div>
+              <div class="voltage-val" id="voltageVal">0.80V</div>
+            </div>
+          </div>
+
+          <!-- Prediction Panel -->
+          <div class="predict-panel">
+            <div class="predict-title">Workload Prediction (EWMA)</div>
+            <div class="predict-bars" id="predictBars">
+              <!-- Generated by JS -->
+            </div>
+            <div class="predict-legend">
+              <span class="dot" style="background:#00f5c4"></span>Predicted
+              <span class="dot" style="background:#7c3aed"></span>Actual
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Row 3: Charts -->
+    <div class="row-3">
+      <div class="chart-card glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">⚡</span> Energy Consumption</h2>
+        </div>
+        <canvas id="energyChart" height="120"></canvas>
+      </div>
+      <div class="chart-card glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">🌡️</span> Thermal Profile</h2>
+        </div>
+        <canvas id="thermalChart" height="120"></canvas>
+      </div>
+      <div class="chart-card glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">🔄</span> Frequency Scaling</h2>
+        </div>
+        <canvas id="freqChart" height="120"></canvas>
+      </div>
+    </div>
+
+    <!-- Dashboard Row 4: Algorithm Comparison + Queue -->
+    <div class="row-4">
+      <div class="compare-card glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">📈</span> Algorithm Comparison</h2>
+        </div>
+        <canvas id="compareChart" height="150"></canvas>
+        <div class="compare-stats" id="compareStats">
+          <div class="compare-row">
+            <span class="compare-label">EcoSched Energy:</span>
+            <span class="compare-val green" id="cmpEco">—</span>
+          </div>
+          <div class="compare-row">
+            <span class="compare-label">Round Robin Energy:</span>
+            <span class="compare-val red" id="cmpRR">—</span>
+          </div>
+          <div class="compare-row">
+            <span class="compare-label">Energy Savings:</span>
+            <span class="compare-val gold" id="cmpSave">—</span>
+          </div>
+          <div class="compare-row">
+            <span class="compare-label">Avg Waiting Time:</span>
+            <span class="compare-val" id="cmpWait">—</span>
+          </div>
+          <div class="compare-row">
+            <span class="compare-label">Avg Turnaround:</span>
+            <span class="compare-val" id="cmpTurn">—</span>
+          </div>
+          <div class="compare-row">
+            <span class="compare-label">Deadline Met:</span>
+            <span class="compare-val green" id="cmpDeadline">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card glass-card">
+        <div class="panel-header">
+          <h2 class="panel-title"><span class="icon">📋</span> Ready Queue</h2>
+        </div>
+        <div class="queue-visual" id="queueVisual">
+          <div class="queue-empty">No tasks in queue</div>
+        </div>
+        <div class="panel-header" style="margin-top:16px">
+          <h2 class="panel-title"><span class="icon">📝</span> Scheduler Log</h2>
+        </div>
+        <div class="log-panel" id="logPanel">
+          <div class="log-entry log-info"><span class="log-time">[00:00]</span> EcoSched initialized. Waiting for tasks…</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Add Task Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal glass-card">
+      <div class="modal-header">
+        <h3>Add New Task</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Task Name</label>
+            <input type="text" id="inputName" placeholder="e.g. VideoEncode" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="inputType" class="form-input">
+              <option value="cpu">CPU-bound</option>
+              <option value="io">I/O-bound</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Arrival Time (ms)</label>
+            <input type="number" id="inputArrival" value="0" min="0" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Burst Time (ms)</label>
+            <input type="number" id="inputBurst" value="10" min="1" class="form-input" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Priority (1=High, 5=Low)</label>
+            <input type="number" id="inputPriority" value="3" min="1" max="5" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>Deadline (ms)</label>
+            <input type="number" id="inputDeadline" value="50" min="1" class="form-input" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelTask">Cancel</button>
+        <button class="btn btn-primary" id="btnSaveTask">Add Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Inspector Modal -->
+  <div class="modal-overlay" id="inspectorOverlay">
+    <div class="modal glass-card">
+      <div class="modal-header">
+        <h3>Task Inspector: <span id="insName"></span></h3>
+        <button class="modal-close" id="insClose">✕</button>
+      </div>
+      <div class="modal-body" style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6;">
+        <div class="compare-row"><span class="compare-label">PID:</span> <span class="compare-val" id="insPid"></span></div>
+        <div class="compare-row"><span class="compare-label">State:</span> <span class="compare-val" id="insState"></span></div>
+        <div class="compare-row"><span class="compare-label">Arrival / Deadline:</span> <span class="compare-val" id="insArrival"></span></div>
+        <div class="compare-row"><span class="compare-label">Burst Remaining:</span> <span class="compare-val" id="insBurst"></span></div>
+        <div class="compare-row"><span class="compare-label">Waiting Time:</span> <span class="compare-val gold" id="insWait"></span></div>
+        <div class="compare-row"><span class="compare-label">Turnaround Time:</span> <span class="compare-val" id="insTurn"></span></div>
+        <div class="compare-row"><span class="compare-label">Est. Energy Consumed:</span> <span class="compare-val green" id="insEnergy"></span></div>
+        <div class="compare-row"><span class="compare-label">Avg Exec Freq:</span> <span class="compare-val" id="insFreq"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/scheduler.js"></script>
+  <script src="js/dvfs.js"></script>
+  <script src="js/thermal.js"></script>
+  <script src="js/prediction.js"></script>
+  <script src="js/visualization.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
