@@ -32,21 +32,14 @@ class DVFSController {
     this.utilHistory.push(util);
   }
 
-  /**
-   * Decide optimal frequency based on:
-   * - Current CPU utilization
-   * - Predicted future utilization
-   * - Task deadline slack
-   * - Task type (CPU-bound vs I/O-bound)
-   * - Thermal throttle flag
-   */
+  
   decideFreq({ util, predictedUtil, slack, taskType, isThermalThrottle }) {
     const prevIdx = this.currentStateIdx;
 
-    // Step 1: Normalize util signal (blend actual + predicted)
+  
     const blendedUtil = 0.6 * util + 0.4 * predictedUtil;
 
-    // Step 2: Base frequency from utilization curve
+   
     let targetIdx;
     if      (blendedUtil < 0.20) targetIdx = 0;  // 0.8 GHz
     else if (blendedUtil < 0.40) targetIdx = 1;  // 1.2 GHz
@@ -54,8 +47,7 @@ class DVFSController {
     else if (blendedUtil < 0.80) targetIdx = 3;  // 2.4 GHz
     else                         targetIdx = 4;  // 3.2 GHz
 
-    // Step 3: Deadline-aware adjustment (slack reclamation)
-    // If slack is large, we can slow down to save energy
+
     if (slack > 30) {
       targetIdx = Math.max(0, targetIdx - 2);
     } else if (slack > 15) {
@@ -65,22 +57,16 @@ class DVFSController {
       targetIdx = Math.min(4, targetIdx + 1);
     }
 
-    // Step 4: Task type optimization
-    // I/O-bound tasks: memory stalls dominate, higher freq wastes energy
+    
     if (taskType === 'io') {
       targetIdx = Math.max(0, targetIdx - 1);
     } else if (taskType === 'cpu') {
-      // CPU-bound: freq directly benefits performance
-      // No change — keep targetIdx
-    }
-
-    // Step 5: Thermal throttle — force lower freq
+     
     if (isThermalThrottle) {
       targetIdx = Math.max(0, Math.min(1, targetIdx));
     }
 
-    // Step 6: Smooth transition (avoid oscillation — hysteresis)
-    // Only go up immediately, go down with 1-step delay
+
     if (targetIdx > this.currentStateIdx) {
       this.currentStateIdx = targetIdx;
     } else if (targetIdx < this.currentStateIdx) {
@@ -91,10 +77,7 @@ class DVFSController {
     return this.freq;
   }
 
-  /**
-   * Calculate energy consumed for a given utilization and time slice
-   * E = (active_power * util + idle_power * (1-util)) * time_ms / 1000
-   */
+ 
   calcEnergy(util, timeMs) {
     const s = this.currentState;
     const activeFraction = util;

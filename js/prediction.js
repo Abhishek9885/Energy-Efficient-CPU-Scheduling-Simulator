@@ -43,9 +43,8 @@ class WorkloadPredictor {
     return pred;
   }
 
-  /**
-   * Update predictor with actual observed utilization
-   */
+  
+   
   update(actualUtil) {
     // EWMA update: S_t = α * x_t + (1-α) * S_{t-1}
     this.ewma = this.alpha * actualUtil + (1 - this.alpha) * this.ewma;
