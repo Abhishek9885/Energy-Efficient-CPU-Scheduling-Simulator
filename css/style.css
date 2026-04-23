@@ -108,6 +108,7 @@ body {
   position: relative;
   overflow: hidden;
 }
+.chart-card { padding: 8px 12px !important; }
 .glass-card::before {
   content: '';
   position: absolute;
@@ -164,7 +165,7 @@ body {
 /* --- Panel Header --- */
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 8px; flex-wrap: wrap; gap: 8px;
 }
 .panel-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
 .panel-title .icon { font-size: 1rem; }
@@ -354,8 +355,8 @@ body {
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 
 /* --- Row 3 --- */
-.chart-card { height: 180px; }
-.chart-card canvas { max-height: 120px !important; }
+.chart-card { height: 140px; }
+.chart-card canvas { max-height: 90px !important; }
 .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
 /* --- Row 4 --- */
