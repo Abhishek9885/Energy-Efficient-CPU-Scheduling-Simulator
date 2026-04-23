@@ -61,7 +61,9 @@ class DVFSController {
     if (taskType === 'io') {
       targetIdx = Math.max(0, targetIdx - 1);
     } else if (taskType === 'cpu') {
-     
+      // cpu specific adjustment can go here
+    }
+
     if (isThermalThrottle) {
       targetIdx = Math.max(0, Math.min(1, targetIdx));
     }

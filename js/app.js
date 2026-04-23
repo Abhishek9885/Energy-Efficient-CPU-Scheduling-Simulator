@@ -93,8 +93,21 @@ const DOM = {
 
 
 function init() {
-  App.viz = new VisualizationEngine();
-  App.viz.init();
+  try {
+    App.viz = new VisualizationEngine();
+    App.viz.init();
+  } catch (e) {
+    console.error('VisualizationEngine init failed:', e);
+    // Create a stub so the rest of the app doesn't crash
+    App.viz = {
+      updateGantt: () => {}, pushDataPoint: () => {}, updateSparkline: () => {},
+      updateThermalRing: () => {}, updateDVFSPanel: () => {}, updateCPUDie: () => {},
+      updatePredictBars: () => {}, updateCompareChart: () => {}, _initPredictBars: () => {},
+      energyChart: { data: { labels: [], datasets: [{data:[]},{data:[]}] }, update: () => {} },
+      thermalChart: { data: { labels: [], datasets: [{data:[]},{data:[]}] }, update: () => {} },
+      freqChart:    { data: { labels: [], datasets: [{data:[]},{data:[]}] }, update: () => {} },
+    };
+  }
   renderTaskTable();
   bindEvents();
   updateSettingsDisplay();
@@ -107,6 +120,7 @@ function init() {
    ============================================= */
 function bindEvents() {
   DOM.btnStart().addEventListener('click', startSimulation);
+  DOM.btnStart().onclick = startSimulation; // backup direct handler
   DOM.btnPause().addEventListener('click', pauseSimulation);
   DOM.btnReset().addEventListener('click', resetSimulation);
   DOM.btnStep().addEventListener('click', stepSimulation);
@@ -207,39 +221,59 @@ function removeTask(id) {
    Simulation Control
    ============================================= */
 function startSimulation() {
-  if (App.isRunning && !App.isPaused) return;
-  if (App.isPaused) { resumeSimulation(); return; }
+  try {
+    // 1. Immediate UI Feedback
+    if (App.isRunning && !App.isPaused) return;
+    if (App.isPaused) { resumeSimulation(); return; }
+    if (!App.tasks.length) { addLog('error', 'No tasks! Please add tasks first.'); return; }
 
-  if (!App.tasks.length) { addLog('error', 'No tasks! Please add tasks first.'); return; }
+    DOM.btnStart().disabled = true;
+    DOM.btnPause().disabled = false;
+    DOM.btnStep().disabled = false;
+    DOM.btnExport().disabled = true;
+    setStatus('running');
+    addLog('info', 'Initializing simulation engine...');
 
-  // Build subsystems
-  App.dvfs      = new DVFSController();
-  App.thermal   = new ThermalController(App.maxTemp);
-  App.predictor = new WorkloadPredictor();
+    // 2. Build subsystems
+    App.dvfs      = new DVFSController();
+    App.thermal   = new ThermalController(App.maxTemp);
+    App.predictor = new WorkloadPredictor();
 
-  // Build scheduler
-  const taskList = App.tasks.map(t => ({ ...t }));
-  App.scheduler  = buildScheduler(App.algorithm, taskList);
+    // 3. Build scheduler
+    const taskList = App.tasks.map(t => ({ ...t }));
+    App.scheduler  = buildScheduler(App.algorithm, taskList);
 
-  // Pre-compute comparison values for other algorithms
-  preComputeComparisons();
+    App.isRunning  = true;
+    App.isPaused   = false;
+    App.simTime    = 0;
+    App.totalEnergy     = 0;
+    App.baselineEnergy  = 0;
+    App.spark      = { energy: [], freq: [], temp: [], util: [], tasks: [] };
 
-  App.isRunning  = true;
-  App.isPaused   = false;
-  App.simTime    = 0;
-  App.totalEnergy     = 0;
-  App.baselineEnergy  = 0;
-  App.spark      = { energy: [], freq: [], temp: [], util: [], tasks: [] };
+    addLog('success', `▶ Simulation started — Algorithm: ${getAlgoName(App.algorithm)}`);
 
-  DOM.btnStart().disabled = true;
-  DOM.btnPause().disabled = false;
-  DOM.btnStep().disabled = false;
-  DOM.btnExport().disabled = true;
-  setStatus('running');
-  addLog('success', `▶ Simulation started — Algorithm: ${getAlgoName(App.algorithm)}`);
+    // 4. Heavy computations in background to keep UI responsive
+    setTimeout(() => {
+      try {
+        addLog('info', 'Pre-computing comparison data (may take a moment)...');
+        preComputeComparisons();
+        addLog('success', 'Comparison data ready.');
+      } catch(ce) {
+        console.warn('preComputeComparisons error:', ce);
+        addLog('warning', '⚠ Comparison stats unavailable: ' + ce.message);
+      }
+    }, 50);
 
-  // Simulation loop
-  App.simInterval = setInterval(() => simTick(false), 80);
+    // 5. Start loop
+    App.simInterval = setInterval(() => simTick(false), 80);
+    
+  } catch (err) {
+    console.error('startSimulation crashed:', err);
+    addLog('error', '❌ Startup failed: ' + err.message);
+    App.isRunning = false;
+    DOM.btnStart().disabled = false;
+    setStatus('idle');
+  }
 }
 
 function buildScheduler(algo, tasks) {
@@ -361,48 +395,59 @@ function finishSimulation() {
    Simulation Tick
    ============================================= */
 function simTick(isStep = false) {
-  if (!App.scheduler || App.scheduler.done) {
-    finishSimulation();
-    return;
-  }
-
-  // Run multiple steps per tick based on speed (or just 1 if stepping)
-  const stepsToRun = isStep ? 1 : App.simSpeed;
-  let lastResult = null;
-
-  for (let s = 0; s < stepsToRun; s++) {
-    if (App.scheduler.done) break;
-
-    const result = App.scheduler.step();
-    if (!result) break;
-    lastResult = result;
-
-    App.simTime = App.scheduler.time;
-
-    // Accumulate energy
-    if (result.energy) {
-      App.totalEnergy += result.energy;
-      const baseE = App.dvfs ? App.dvfs.calcBaselineEnergy(result.actualUtil ?? 0.8, result.slice ?? App.quantum) : 0;
-      App.baselineEnergy += baseE;
+  try {
+    if (!App.scheduler || App.scheduler.done) {
+      finishSimulation();
+      return;
     }
 
-    // Flush new scheduler logs
-    flushLogs();
-  }
+    // Run multiple steps per tick based on speed (or just 1 if stepping)
+    const stepsToRun = isStep ? 1 : App.simSpeed;
+    let lastResult = null;
 
-  // Update logic reasoning
-  if (lastResult && lastResult.reason) {
-    DOM.debugReason().textContent = `Debug (Tick T=${App.simTime}): ${lastResult.reason}`;
-    DOM.debugReason().classList.remove('visible');
-    void DOM.debugReason().offsetWidth; // trigger reflow
-    DOM.debugReason().classList.add('visible');
-  } else if (lastResult && lastResult.idle) {
-    DOM.debugReason().textContent = `Debug (Tick T=${App.simTime}): Queue empty, waiting for task arrival...`;
-    DOM.debugReason().classList.add('visible');
-  }
+    for (let s = 0; s < stepsToRun; s++) {
+      if (App.scheduler.done) break;
 
-  // Update UI from current state
-  updateUI();
+      const result = App.scheduler.step();
+      if (!result) break;
+      lastResult = result;
+
+      App.simTime = App.scheduler.time;
+
+      // Accumulate energy
+      if (result.energy) {
+        App.totalEnergy += result.energy;
+        const baseE = App.dvfs ? App.dvfs.calcBaselineEnergy(result.actualUtil ?? 0.8, result.slice ?? App.quantum) : 0;
+        App.baselineEnergy += baseE;
+      }
+
+      // Flush new scheduler logs
+      flushLogs();
+    }
+
+    // Update logic reasoning
+    if (lastResult && lastResult.reason) {
+      DOM.debugReason().textContent = `Debug (Tick T=${App.simTime}): ${lastResult.reason}`;
+      DOM.debugReason().classList.remove('visible');
+      void DOM.debugReason().offsetWidth;
+      DOM.debugReason().classList.add('visible');
+    } else if (lastResult && lastResult.idle) {
+      DOM.debugReason().textContent = `Debug (Tick T=${App.simTime}): Queue empty, waiting for task arrival...`;
+      DOM.debugReason().classList.add('visible');
+    }
+
+    // Update UI from current state
+    updateUI();
+  } catch (err) {
+    console.error('simTick crashed:', err);
+    clearInterval(App.simInterval);
+    addLog('error', '❌ Simulation error at T=' + App.simTime + ': ' + err.message);
+    addLog('info', 'Open browser DevTools (F12) → Console for full stack trace.');
+    App.isRunning = false;
+    DOM.btnStart().disabled = false;
+    DOM.btnPause().disabled = true;
+    setStatus('idle');
+  }
 }
 
 /* =============================================
