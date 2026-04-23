@@ -363,8 +363,8 @@ body {
 .row-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* --- Compare Stats --- */
-.compare-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin-top: 10px; }
-.compare-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.compare-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin-top: 8px; }
+.compare-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
 .compare-label { color: var(--text-secondary); }
 .compare-val { font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
 .compare-val.green { color: var(--accent-green); }
@@ -394,7 +394,7 @@ body {
 /* --- Log Panel --- */
 .log-panel {
   background: rgba(0,0,0,0.4); border-radius: 10px; border: 1px solid var(--border);
-  padding: 8px 12px; max-height: 100px; overflow-y: auto;
+  padding: 8px 12px; max-height: 80px; overflow-y: auto;
   font-family: var(--font-mono); font-size: 0.72rem;
   display: flex; flex-direction: column; gap: 3px;
 }
