@@ -190,11 +190,11 @@ class VisualizationEngine {
       scales: {
         x: {
           grid:  { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-          ticks: { color: '#475569', font: { size: 10, family: 'JetBrains Mono' } },
+          ticks: { color: '#475569', font: { size: 9, family: 'JetBrains Mono' } },
         },
         y: {
           grid:  { color: 'rgba(255,255,255,0.06)', drawBorder: false },
-          ticks: { color: '#475569', font: { size: 10, family: 'JetBrains Mono' } },
+          ticks: { color: '#475569', font: { size: 9, family: 'JetBrains Mono' } },
         }
       }
     };
@@ -332,12 +332,16 @@ class VisualizationEngine {
       options: {
         ...this._chartDefaults(),
         indexAxis: 'y',
+        layout: { padding: { top: 0, bottom: 0, left: 0, right: 10 } },
         scales: {
           x: {
             ...this._chartDefaults().scales.x,
-            title: { display: true, text: 'Total Energy (J)', color: '#475569', font: { size: 10 } }
+            title: { display: false }
           },
-          y: { ...this._chartDefaults().scales.y }
+          y: { 
+            ...this._chartDefaults().scales.y,
+            ticks: { ...this._chartDefaults().scales.y.ticks, font: { size: 8 } }
+          }
         }
       }
     });
