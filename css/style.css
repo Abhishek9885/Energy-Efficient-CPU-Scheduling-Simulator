@@ -211,7 +211,7 @@ body {
 .range-val { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent-green); min-width: 45px; text-align: right; }
 
 /* --- Task Table --- */
-.task-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 110px; border-radius: 10px; border: 1px solid var(--border); }
+.task-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 180px; border-radius: 10px; border: 1px solid var(--border); }
 .task-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 .task-table th {
   background: rgba(255,255,255,0.04); padding: 8px 12px;
@@ -261,7 +261,7 @@ body {
 
 /* --- Gantt --- */
 .gantt-wrap { flex: 1; }
-.gantt-outer { overflow-x: auto; overflow-y: auto; max-height: 120px; }
+.gantt-outer { overflow-x: auto; overflow-y: auto; max-height: 200px; }
 .gantt-outer canvas { min-width: 100%; display: block; }
 .gantt-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-secondary); }
@@ -277,7 +277,7 @@ body {
   background: rgba(0,0,0,0.3); border-radius: 12px;
   padding: 8px; position: relative;
   border: 1px solid var(--border);
-  height: 115px;
+  height: 160px;
 }
 .cpu-die::before {
   content: '';
@@ -355,8 +355,8 @@ body {
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
 
 /* --- Row 3 --- */
-.chart-card { height: 130px; }
-.chart-card canvas { max-height: 85px !important; }
+.chart-card { height: 200px; }
+.chart-card canvas { max-height: 150px !important; }
 .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
 /* --- Row 4 --- */
@@ -393,7 +393,7 @@ body {
 /* --- Log Panel --- */
 .log-panel {
   background: rgba(0,0,0,0.4); border-radius: 10px; border: 1px solid var(--border);
-  padding: 6px 10px; max-height: 50px; overflow-y: auto;
+  padding: 6px 10px; max-height: 120px; overflow-y: auto;
   font-family: var(--font-mono); font-size: 0.72rem;
   display: flex; flex-direction: column; gap: 3px;
 }
