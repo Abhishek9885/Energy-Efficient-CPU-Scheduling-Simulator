@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SGLSbiL9cb9E7Y7Nf1p6Zt+1a1H0q5m1u4j1r4j8S5Fm0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0m0" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <script>
     // Immediate check for Chart.js
     if (typeof Chart === 'undefined') {
@@ -17,7 +17,7 @@
       // Create a minimal stub to prevent immediate crashes in VisualizationEngine
       window.Chart = function() {
         this.update = function() {};
-        this.data = { labels: [], datasets: [] };
+        this.data = { labels: [], datasets: [{ data: [] }, { data: [] }] };
       };
     }
   </script>
@@ -302,7 +302,7 @@
         <div class="panel-header">
           <h2 class="panel-title"><span class="icon">📈</span> Algorithm Comparison</h2>
         </div>
-        <canvas id="compareChart" height="100"></canvas>
+        <canvas id="compareChart" height="150"></canvas>
         <div class="compare-stats" id="compareStats">
           <div class="compare-row">
             <span class="compare-label">EcoSched Energy:</span>
